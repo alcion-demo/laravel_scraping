@@ -1,6 +1,6 @@
 # スクレイピング学習  
 
-<img alt="Static Badge" src="https://img.shields.io/badge/wsl2-w?style=plastic&logo=linux&logoColor=000000&labelColor=%23FCC624&color=%23FCC624"> <img alt="Static Badge" src="https://img.shields.io/badge/ubuntu-u?style=plastic&logo=ubuntu&logoColor=%23ffffff&labelColor=%23E95420&color=%23E95420"> <img alt="Static Badge" src="https://img.shields.io/badge/alpine-l?style=plastic&logo=alpinelinux&logoColor=%23ffffff&labelColor=%230D597F&color=%230D597F">
+<img alt="Static Badge" src="https://img.shields.io/badge/wsl2-w?style=plastic&logo=linux&logoColor=000000&labelColor=%23FCC624&color=%23FCC624"> <img alt="Static Badge" src="https://img.shields.io/badge/ubuntu-u?style=plastic&logo=ubuntu&logoColor=%23ffffff&labelColor=%23E95420&color=%23E95420">
 <img alt="Static Badge" src="https://img.shields.io/badge/Docker-d?style=plastic&logo=docker&logoColor=%23ffffff&labelColor=%232496ED&color=%232496ED">  
 <img alt="Static Badge" src="https://img.shields.io/badge/NGINX-n?style=plastic&logo=nginx&logoColor=%23ffffff">
 <img alt="Static Badge" src="https://img.shields.io/badge/MySQL-m?style=plastic&logo=mysql&logoColor=%23ffffff&labelColor=%234479A1&color=%234479A1">
@@ -19,16 +19,19 @@
 - 実装済み機能は、Todo リソースのCRUD APIと、それを呼び出す React フロントエンド。
 
 ## 学習・検証目的
-- 後で書く
-- PHPUnitによるAPI・機能テスト
+- スクレイピング検証の学習
+- API と UI 連携の検証
 
 ## 主な機能
-- 後で書く
-  - 後で書く
-  - 後で書く
-  - 後で書く
-- テスト
-  - Featureテストを実装し、後で書くを検証
+- ユーザー認証（Fortify）
+  - API 認証（Sanctum ミドルウェア適用）
+- スクレイピング API
+  - 複数 URL の一括スクレイピング
+  - 技術記事情報を取得
+  - 家電情報を取得
+  - 差分比較
+- CSV ダウンロード
+  - スクレイピング結果の排出
 
 ## 使用技術
 | カテゴリ | 使用技術 |
@@ -36,6 +39,7 @@
 | **Backend** | Laravel 13, PHP `8.5.11` |
 | **Frontend** | React `^19.3.1`, Tailwind CSS, Node.js `22.23.4` |
 | **Authentication / Authorization** | Fortify |
+| **Web Scraping** | `symfony/dom-crawler`, `symfony/css-selector`, `Illuminate\Http\Client\Http` |
 | **Infrastructure** | Docker Compose (App / Node / MySQL / Nginx) |
 | **OS Environment** | WSL2 (Ubuntu / Alpine Linux) |
 | **Database** | MySQL 8.x |
@@ -85,6 +89,7 @@ php artisan lang:publish
 cp ./vendor/laravel-lang/lang/json/ja.json ./lang/
 cp -r ./vendor/laravel-lang/lang/src/ja ./lang/
 composer require phpoffice/phpspreadsheet
+composer require symfony/dom-crawler symfony/css-selector
 ```
 
 #### 8. その他(フロントエンド)
@@ -125,78 +130,47 @@ php artisan config:publish cors
   - `app/`
     - `Actions/`
       - `Fortify/`
+    - `Console/`
+      - `Commands/`
+        - `ScrapePage.php`
     - `Http/`
       - `Controllers/`
         - `Controller.php`
-        - `Api/`
-          - `DashboardController.php`
-          - `ReceiptController.php`
-          - `ReceiptExportController.php`
+        - `ScrapingController.php`
       - `Requests/`
-        - `StoreReceiptRequest.php`
-        - `UpdateReceiptRequest.php`
+        - `ScrapingRequest.php`
     - `Models/`
-      - `Receipt.php`
-      - `ReceiptItem.php`
       - `User.php`
     - `Providers/`
       - `AppServiceProvider.php`
       - `FortifyServiceProvider.php`
     - `Services/`
-      - `DashboardService.php`
-      - `ReceiptExcelExportService.php`
-  - `resources/`
-    - `views/`
-      - `welcome.blade.php`
+      - `Articles/`
+        - `ZennService.php`
+      - `DiffService.php`
+      - `ScrapingService.php`
   - `database/`
+  - `tests/`
+  - `storage/`
 - frontend
   - `package.json`
-  - `README.md`
   - `src/`
-    - `auth/`
-      - `Auth.css`
-      - `components/`
-      - `hooks/`
-        - `useAuth.ts`
-      - `pages/`
-        - `LoginPage.tsx`
-        - `RegisterPage.tsx`
-      - `types/`
-    - `lib/`
-      - `axios.ts`
+    - `api/`
+      - `api.ts`
+    - `contexts/`
+      - `AuthContext.tsx`
     - `pages/`
-      - `calendar/`
-        - `CalendarGrid.tsx`
-        - `CalendarHeader.tsx`
-        - `CalendarPage.tsx`
-        - `hooks/`
-        - `types/`
-        - `utils/`
-      - `dashboard/`
-        - `Dashboard.css`
-        - `DashboardPage.tsx`
-        - `components/`
-        - `hooks/`
-        - `types/`
-        - `utils/`
-      - `receipts/`
-        - `ReceiptCreatePage.tsx`
-        - `ReceiptEditPage.tsx`
-        - `ReceiptsPage.tsx`
-        - `components/`
-          - `ReceiptForm.tsx`
-          - `ReceiptItemRow.tsx`
-          - `ReceiptItemsEditor.tsx`
-          - `ReceiptSummary.tsx`
-        - `hooks/`
-        - `types/`
-    - `App.css`
+      - `Dashboard.tsx`
+      - `auth/`
+        - `Login.tsx`
+        - `Register.tsx`
     - `App.tsx`
-    - `index.css`
     - `main.tsx`
+    - `index.css`
   - `public/`
   - `index.html`
   - `vite.config.ts`
+  - `tsconfig.json`
 - `data/`
 - `mysql/`
   - `my.cnf`
@@ -212,17 +186,19 @@ php artisan config:publish cors
 ## 処理の流れ　後で修正
 ```mermaid
 graph TD
-    A[React フロントエンド] -->|認証/ログイン| B[Laravel Fortify]
-    A -->|API 呼び出し| C[Laravel API routes]
-    C --> D[ReceiptController]
-    C --> E[DashboardController]
-    C --> F[ReceiptExportController]
-    D --> G[Receipt Model]
-    E --> H[DashboardService]
-    F --> I[ReceiptExcelExportService]
-    G --> J[(MySQL Database)]
-    H --> J
-    I --> J
+    A[React Dashboard] -->|ログイン状態確認| B[AuthContext]
+    B -->|GET /api/user| C[Laravel Sanctum / Fortify]
+    A -->|POST /api/scraping| D[ScrapingController]
+    D --> E[ScrapingRequest validation]
+    E --> F[ScrapingService]
+    F --> G{URL host}
+    G -->|zenn.dev| H[ZennService]
+    G -->|zojirushi.co.jp / tiger-corporation.com| I[parseProductDetail / scrapeCategoryList]
+    G -->|その他| J[汎用 HTML 抽出]
+    F --> K[DiffService]
+    F --> L[saveJson / saveCsv]
+    L --> M[storage/app/scraping]
+    K --> N[diff JSON 保存]
 ```
 ## クラス構成図　後で修正
 ```mermaid
@@ -232,67 +208,52 @@ classDiagram
         +name
         +email
         +password
-        +receipts()
+        +casts()
     }
 
-    class Receipt {
-        +id
-        +user_id
-        +purchase_date
-        +category
-        +store_name
-        +total_amount
-        +note
-        +user()
-        +items()
-        +getListByUser(userId)
-        +findByUser(userId, receiptId)
-        +createWithItems(userId, data)
-        +updateWithItems(userId, receiptId, data)
-        +deleteByUser(userId, receiptId)
+    class ScrapingRequest {
+        +authorize()
+        +rules()
     }
 
-    class ReceiptItem {
-        +id
-        +receipt_id
-        +product_name
-        +quantity
-        +unit_price
-        +receipt()
-    }
-
-    class ReceiptController {
-        +index(request)
+    class ScrapingController {
         +store(request)
-        +show(request, id)
+        +show(id)
         +update(request, id)
-        +destroy(request, id)
+        +destroy(id)
     }
 
-    class DashboardController {
-        +index(request, dashboardService)
+    class ScrapingService {
+        +scrapeUrls(urls)
+        +scrapeSingleUrlReturnItems(url)
+        +scrapeCategoryList(listUrl)
+        +parseProductDetail(url, html)
+        +saveJson(page)
+        +saveCsv(page)
+        +getLastScrapedItems()
     }
 
-    class DashboardService {
-        +getMonthlySummary(userId, month)
+    class DiffService {
+        +compare(previous, current)
     }
 
-    class ReceiptExportController {
-        +export(request, service)
+    class ZennService {
+        +fetchPage(page)
+        +fetchArticles(page)
+        +fetchAllArticles()
+        +fetchRecentArticles()
     }
 
-    class ReceiptExcelExportService {
-        +generate(userId, month)
-        +save(spreadsheet, path)
+    class ScrapePage {
+        +handle(scrapingService)
     }
 
-    User "1" --> "many" Receipt
-    Receipt "1" --> "many" ReceiptItem
-    ReceiptController --> Receipt
-    DashboardController --> DashboardService
-    ReceiptExportController --> ReceiptExcelExportService
+    User --> Authenticatable
+    ScrapingController --> ScrapingService
+    ScrapingController --> ScrapingRequest
+    ScrapingService --> DiffService
+    ScrapingService --> ZennService
+    ScrapePage --> ScrapingService
 ```
-## 今後の改善予定　後で修正
-- OCRを追加検討
-- Excel出力レイアウトの改善
-- 実際の利用を通じたUI・操作性の改善
+## 今後の改善予定
+- 多言語でも同様のアプリを作成し、構造比較を行う予定だったが、urlとデータ抽出(APIによる処理を採用)等の問題で題材としてふさわしくないのでfixとする。
